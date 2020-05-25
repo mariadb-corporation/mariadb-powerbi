@@ -12,10 +12,7 @@ shared MariaDB.Contents = (optional message as text) =>
 // Data Source Kind description
 MariaDB = [
     Authentication = [
-        // Key = [],
-        // UsernamePassword = [],
-        // Windows = [],
-        Implicit = []
+        UsernamePassword = []
     ],
     Label = Extension.LoadString("DataSourceLabel")
 ];
