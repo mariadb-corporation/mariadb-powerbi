@@ -126,4 +126,19 @@
   <data name="DataSourceLabel" xml:space="preserve">
     <value>MariaDB</value>
   </data>
+  <data name="GetData_Database_FieldCaption" xml:space="preserve">
+    <value>Database</value>
+  </data>
+  <data name="GetData_Database_FieldDescription" xml:space="preserve">
+    <value />
+  </data>
+  <data name="GetData_Server_FieldCaption" xml:space="preserve">
+    <value>Server</value>
+  </data>
+  <data name="GetData_Server_FieldDescription" xml:space="preserve">
+    <value />
+  </data>
+  <data name="GetData_Title" xml:space="preserve">
+    <value>MariaDB database</value>
+  </data>
 </root>
