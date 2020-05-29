@@ -1,6 +1,9 @@
 ﻿// This file contains your Data Connector logic
 section MariaDB;
 
+// MariaDB Information Schema
+INFORMATION_SCHEMA_TABLE_NAME = "TABLE_NAME";
+
 [DataSource.Kind="MariaDB", Publish="MariaDB.Publish"]
 shared MariaDB.Database = Value.ReplaceType(MariaDBDatabaseImpl, MariaDBDatabaseType);
 
@@ -35,11 +38,13 @@ MariaDBDatabaseImpl = (server as text, optional database as text) as table =>
             if database <> null then [database = database] else [],
             CredentialRecord
         }),
-        //AdoDotNetDataSource = AdoDotNet.DataSource(Provider, CredentialConnectionString),
+        AdoDotNetDataSource = AdoDotNet.DataSource(Provider, CredentialConnectionString),
         //NavTable = NavigationTable.Simple(AdoDotNetDataSource)
         fn = Record.FieldNames(CredentialConnectionString),
         m1 = List.Accumulate(fn, 0, (state, current) => Text.Combine({if state is text then state else "", Text.From(current), ": ", Text.From(Record.Field(CredentialConnectionString, current)), ", "})),
-        NavTable = CreateNavTable(m1)
+        //NavTable = CreateNavTable(m1),
+        //TableNamesList = AdoNet.TableNames(AdoDotNetDataSource, database),
+        NavTable = NavigationTable.FromDatabase(AdoDotNetDataSource, database)
     in
         NavTable;
 
@@ -71,7 +76,45 @@ MariaDB.Icons = [
     Icon32 = { Extension.Contents("MariaDB32.png"), Extension.Contents("MariaDB40.png"), Extension.Contents("MariaDB48.png"), Extension.Contents("MariaDB64.png") }
 ];
 
+// ADO.NET helpers
+AdoNet.Tables = (AdoDotNetDataSource as table, DatabaseName as text) as table =>
+    let 
+        TablesFunction = AdoDotNetDataSource{[CollectionName = "Tables"]}[Data],
+        Tables = TablesFunction(null, DatabaseName, null, null)
+    in
+        Tables;
+
+AdoNet.TableNames = (AdoDotNetDataSource as table, DatabaseName as text) as list =>
+    let 
+        Tables = AdoNet.Tables(AdoDotNetDataSource, DatabaseName),
+        TableNames = Table.Column(Tables, INFORMATION_SCHEMA_TABLE_NAME),
+        DistinctTableNames = List.Distinct(TableNames)
+    in
+        DistinctTableNames;
+
 // Navigation Table support
+NavigationTable.RowFromTable = (AdoDotNetDataSource as table, Database as text, TableName as text) as list =>
+    let
+        // Structure: {"Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf"}
+        Row = {TableName, TableName, FunctionCallThatReturnsATable(),  "Table",    "Table",    true}
+    in
+        Row;
+
+NavigationTable.FromDatabase = (AdoDotNetDataSource as table, Database as text) as table =>
+    let
+        TableNames = AdoNet.TableNames(AdoDotNetDataSource, Database),
+        NavRows = List.Accumulate(TableNames, 0, (state, current) => List.Combine({
+            if state is list then state else {},
+            { NavigationTable.RowFromTable(AdoDotNetDataSource, Database, current) }
+        })),
+        objects = #table(
+            {"Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf"},
+            NavRows
+            ),
+        NavTable = Table.ToNavigationTable(objects, {"Key"}, "Name", "Data", "ItemKind", "ItemName", "IsLeaf")
+    in
+        NavTable;
+
 NavigationTable.Simple = (AdoDotNetDataSource as table) as table =>
     let
         objects = #table(
