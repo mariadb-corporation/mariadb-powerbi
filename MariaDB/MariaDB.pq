@@ -20,12 +20,10 @@ MariaDBDatabaseType = type function (
         Documentation.Name = Extension.LoadString("GetData_Title")
     ];
 
+CredentialConnectionString = "";
+
 MariaDBDatabaseImpl = (server as text, optional database as text) as table =>
     let
-        // MySqlConnector for ADO.NET has to be installed:
-        // https://mariadb.com/kb/en/mysqlconnector-for-adonet/
-        // ADO.NET Provider name should be registered in .NET Framework Machine.config > system.data > DbProviderFactories
-        Provider = "MySql.Data.MySqlClient",
         // Get the current credential, and check what type of authentication we're using
         Credential = Extension.CurrentCredential(),
         CredentialRecord = if (Credential[AuthenticationKind]?) = "UsernamePassword" then 
@@ -38,13 +36,13 @@ MariaDBDatabaseImpl = (server as text, optional database as text) as table =>
             if database <> null then [database = database] else [],
             CredentialRecord
         }),
-        AdoDotNetDataSource = AdoDotNet.DataSource(Provider, CredentialConnectionString),
+        //AdoDotNetDataSource = AdoDotNet.DataSource(AdoNetProvider, CredentialConnectionString),
         //NavTable = NavigationTable.Simple(AdoDotNetDataSource)
-        fn = Record.FieldNames(CredentialConnectionString),
-        m1 = List.Accumulate(fn, 0, (state, current) => Text.Combine({if state is text then state else "", Text.From(current), ": ", Text.From(Record.Field(CredentialConnectionString, current)), ", "})),
+        //fn = Record.FieldNames(CredentialConnectionString),
+        //m1 = List.Accumulate(fn, 0, (state, current) => Text.Combine({if state is text then state else "", Text.From(current), ": ", Text.From(Record.Field(CredentialConnectionString, current)), ", "})),
         //NavTable = CreateNavTable(m1),
         //TableNamesList = AdoNet.TableNames(AdoDotNetDataSource, database),
-        NavTable = NavigationTable.FromDatabase(AdoDotNetDataSource, database)
+        NavTable = NavigationTable.FromDatabase(CredentialConnectionString, database)
     in
         NavTable;
 
@@ -77,35 +75,52 @@ MariaDB.Icons = [
 ];
 
 // ADO.NET helpers
-AdoNet.Tables = (AdoDotNetDataSource as table, DatabaseName as text) as table =>
+// MySqlConnector for ADO.NET has to be installed:
+// https://mariadb.com/kb/en/mysqlconnector-for-adonet/
+// ADO.NET Provider name should be registered in .NET Framework Machine.config > system.data > DbProviderFactories
+AdoNetProvider = "MySql.Data.MySqlClient";
+
+AdoNet.Tables = (ConnectionString as record, DatabaseName as text) as table =>
     let 
+        AdoDotNetDataSource = AdoDotNet.DataSource(AdoNetProvider, ConnectionString),
         TablesFunction = AdoDotNetDataSource{[CollectionName = "Tables"]}[Data],
         Tables = TablesFunction(null, DatabaseName, null, null)
     in
         Tables;
 
-AdoNet.TableNames = (AdoDotNetDataSource as table, DatabaseName as text) as list =>
+AdoNet.TableNames = (ConnectionString as record, DatabaseName as text) as list =>
     let 
-        Tables = AdoNet.Tables(AdoDotNetDataSource, DatabaseName),
+        Tables = AdoNet.Tables(ConnectionString, DatabaseName),
         TableNames = Table.Column(Tables, INFORMATION_SCHEMA_TABLE_NAME),
         DistinctTableNames = List.Distinct(TableNames)
     in
         DistinctTableNames;
 
-// Navigation Table support
-NavigationTable.RowFromTable = (AdoDotNetDataSource as table, Database as text, TableName as text) as list =>
+AdoNet.TableContents = (ConnectionString as record, TableName as text, optional limit as number) as table =>
     let
+        Query = Text.Combine({
+            Text.Format("SELECT * FROM #{0}", {TableName}),
+            if limit = null or Number.IsNaN(limit) then "" else Text.Format(" LIMIT #{0}", {Number.Round(limit)})
+        }),
+        Result = AdoDotNet.Query(AdoNetProvider, ConnectionString, Query)
+    in
+        Result;
+
+// Navigation Table support
+NavigationTable.RowFromTable = (ConnectionString as record, TableName as text) as list =>
+    let
+        PreviewRowCountLimit = null,
         // Structure: {"Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf"}
-        Row = {TableName, TableName, FunctionCallThatReturnsATable(),  "Table",    "Table",    true}
+        Row = {TableName, TableName, AdoNet.TableContents(ConnectionString, TableName, PreviewRowCountLimit),  "Table",    "Table",    true}
     in
         Row;
 
-NavigationTable.FromDatabase = (AdoDotNetDataSource as table, Database as text) as table =>
+NavigationTable.FromDatabase = (ConnectionString as record, Database as text) as table =>
     let
-        TableNames = AdoNet.TableNames(AdoDotNetDataSource, Database),
+        TableNames = AdoNet.TableNames(ConnectionString, Database),
         NavRows = List.Accumulate(TableNames, 0, (state, current) => List.Combine({
             if state is list then state else {},
-            { NavigationTable.RowFromTable(AdoDotNetDataSource, Database, current) }
+            { NavigationTable.RowFromTable(ConnectionString, current) }
         })),
         objects = #table(
             {"Name", "Key", "Data", "ItemKind", "ItemName", "IsLeaf"},
