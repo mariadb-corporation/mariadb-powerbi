@@ -66,6 +66,12 @@ MariaDBDatabaseImplOdbc = (server as text, optional database as text) as table =
 
 // Data Source Kind description
 MariaDB = [
+    TestConnection = (dataSourcePath) =>
+        let
+            json = Json.Document(dataSourcePath),
+            server = json[server]
+        in
+            { "MariaDB.Database", server},
     Authentication = [
         UsernamePassword = []
     ],
