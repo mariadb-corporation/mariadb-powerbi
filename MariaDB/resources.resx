@@ -130,7 +130,7 @@
     <value>Database</value>
   </data>
   <data name="GetData_Database_FieldDescription" xml:space="preserve">
-    <value>When empty allows browsing all databases available on the server for the provided credentials.</value>
+    <value>When empty allows browsing databases in Navigator.</value>
   </data>
   <data name="GetData_Server_FieldCaption" xml:space="preserve">
     <value>Maria DB Server</value>
