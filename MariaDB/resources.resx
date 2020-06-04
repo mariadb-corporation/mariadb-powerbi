@@ -136,7 +136,7 @@
     <value>Maria DB Server</value>
   </data>
   <data name="GetData_Server_FieldDescription" xml:space="preserve">
-    <value />
+    <value>You can also enter a port number. Example: servername:portnumber</value>
   </data>
   <data name="GetData_Title" xml:space="preserve">
     <value>MariaDB database</value>

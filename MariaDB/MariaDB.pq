@@ -17,7 +17,8 @@ Source: https://github.com/Microsoft/DataConnectors/blob/master/docs/m-extension
 MariaDBDatabaseType = type function (
     #"Maria DB Server" as (type text meta [
         Documentation.FieldCaption = Extension.LoadString("GetData_Server_FieldCaption"),
-        Documentation.FieldDescription = Extension.LoadString("GetData_Server_FieldDescription")
+        Documentation.FieldDescription = Extension.LoadString("GetData_Server_FieldDescription"),
+        Documentation.SampleValues = {"servername", "servername:portnumber"}
     ]),
     optional database as (type text meta [
         Documentation.FieldCaption = Extension.LoadString("GetData_Database_FieldCaption"),
