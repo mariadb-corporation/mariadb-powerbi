@@ -30,11 +30,13 @@ MariaDBDatabaseType = type function (
         Documentation.Name = Extension.LoadString("GetData_Title")
     ];
 
-MariaDBDatabaseImplOdbc = (server as text, optional database as text) as table =>
+MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
     let
         Address = GetAddress(server),
         ServerHost = Address[Host],
         ServerPort = Address[Port],
+        ServerDatabase = Address[Database],
+        database = if db <> null and db <> "" then db else ServerDatabase,
         // Get the current credential, and check what type of authentication we're using
         Credential = Extension.CurrentCredential(),
         CredentialRecord = if (Credential[AuthenticationKind]?) = "UsernamePassword" then 
@@ -109,8 +111,11 @@ MariaDB.Icons = [
     Icon32 = { Extension.Contents("MariaDB32.png"), Extension.Contents("MariaDB40.png"), Extension.Contents("MariaDB48.png"), Extension.Contents("MariaDB64.png") }
 ];
 
-GetAddress = (server as text) as record =>
+GetAddress = (MariaDBServer as text) as record =>
     let
+        list = Text.Split(MariaDBServer, ";"),
+        server = List.First(list),
+        database = if List.Count(list) > 1 then List.Last(List.FirstN(list, 2)) else null,
         Address = Uri.Parts("http://" & server),
         BadServer = Address[Host] = "" or Address[Scheme] <> "http" or Address[Path] <> "/" or Address[Query] <> [] or Address[Fragment] <> ""
             or Address[UserName] <> "" or Address[Password] <> "",
@@ -118,7 +123,7 @@ GetAddress = (server as text) as record =>
                 DefaultPort 
             else Address[Port],
         Host = Address[Host],
-        Result = [Host=Host, Port=Port]
+        Result = [Host=Host, Port=Port, Database=database]
     in
         if BadServer then 
             error "Invalid server name"
