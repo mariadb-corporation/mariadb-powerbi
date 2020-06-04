@@ -1,6 +1,8 @@
 ﻿// This file contains your Data Connector logic
 section MariaDB;
 
+DefaultPort = 3306;
+
 // MariaDB Information Schema
 INFORMATION_SCHEMA_TABLE_NAME = "TABLE_NAME";
 
@@ -30,6 +32,9 @@ MariaDBDatabaseType = type function (
 
 MariaDBDatabaseImplOdbc = (server as text, optional database as text) as table =>
     let
+        Address = GetAddress(server),
+        ServerHost = Address[Host],
+        ServerPort = Address[Port],
         // Get the current credential, and check what type of authentication we're using
         Credential = Extension.CurrentCredential(),
         CredentialRecord = if (Credential[AuthenticationKind]?) = "UsernamePassword" then 
@@ -38,7 +43,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional database as text) as table =
             else
                 error "Username and Password credentials required.", 
         CredentialConnectionString = Record.Combine({
-            [Driver = ODBCDriver, Server = server],
+            [Driver = ODBCDriver, Server = ServerHost, Port = ServerPort],
             if database <> null then [Database = database] else [],
             CredentialRecord
         }),
@@ -103,6 +108,21 @@ MariaDB.Icons = [
     Icon16 = { Extension.Contents("MariaDB16.png"), Extension.Contents("MariaDB20.png"), Extension.Contents("MariaDB24.png"), Extension.Contents("MariaDB32.png") },
     Icon32 = { Extension.Contents("MariaDB32.png"), Extension.Contents("MariaDB40.png"), Extension.Contents("MariaDB48.png"), Extension.Contents("MariaDB64.png") }
 ];
+
+GetAddress = (server as text) as record =>
+    let
+        Address = Uri.Parts("http://" & server),
+        BadServer = Address[Host] = "" or Address[Scheme] <> "http" or Address[Path] <> "/" or Address[Query] <> [] or Address[Fragment] <> ""
+            or Address[UserName] <> "" or Address[Password] <> "",
+        Port = if Address[Port] = 80 and not Text.EndsWith(server, ":80") then 
+                DefaultPort 
+            else Address[Port],
+        Host = Address[Host],
+        Result = [Host=Host, Port=Port]
+    in
+        if BadServer then 
+            error "Invalid server name"
+        else Result;
 
 // ODBC helpers
 ODBCDriver = "MariaDB ODBC 3.1 Driver";
