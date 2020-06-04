@@ -7,8 +7,15 @@ INFORMATION_SCHEMA_TABLE_NAME = "TABLE_NAME";
 [DataSource.Kind="MariaDB", Publish="MariaDB.Publish"]
 shared MariaDB.Database = Value.ReplaceType(MariaDBDatabaseImplOdbc, MariaDBDatabaseType);
 
+// The server parameter has a full name to overcome the limitation of the Data Source Settings dialog in Power BI Desktop:
+/*
+Note: We currently recommend you do not include a Label for your data source if your function has required parameters, 
+as users will not be able to distinguish between the different credentials they have entered. We are hoping to improve this 
+in the future (i.e. allowing data connectors to display their own custom data source paths).
+Source: https://github.com/Microsoft/DataConnectors/blob/master/docs/m-extensions.md#data-source-path-format
+*/
 MariaDBDatabaseType = type function (
-    server as (type text meta [
+    #"Maria DB Server" as (type text meta [
         Documentation.FieldCaption = Extension.LoadString("GetData_Server_FieldCaption"),
         Documentation.FieldDescription = Extension.LoadString("GetData_Server_FieldDescription")
     ]),
@@ -74,8 +81,10 @@ MariaDB = [
             { "MariaDB.Database", server},
     Authentication = [
         UsernamePassword = []
-    ],
-    Label = Extension.LoadString("DataSourceLabel")
+    ]//,
+    // Label not in use following Microsoft recommendation (also see the "MariaDBDatabaseImplOdbc" note above):
+    // https://github.com/Microsoft/DataConnectors/blob/master/docs/m-extensions.md#data-source-path-format
+    //Label = Extension.LoadString("DataSourceLabel")
 ];
 
 // Data Source UI publishing description
