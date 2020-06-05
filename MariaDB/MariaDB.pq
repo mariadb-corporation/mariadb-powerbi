@@ -28,7 +28,11 @@ MariaDBDatabaseType = type function (
     ]))
     as table meta [
         Documentation.Name = Extension.LoadString("GetData_Title"),
-        Documentation.LongDescription = "Returns a table of MariaDB tables, views, and stored functions from the MariaDB database or a table of databases on the specified MariaDB server.",
+        Documentation.LongDescription = "Returns a table of databases on the specified MariaDB server, 
+        or a table of tables, views, and stored functions from the MariaDB database 
+        specified either after a semicolon in the <code>Maria DB Data Source</code> string or as the <code>database</code> parameter. 
+        The <code>Maria DB Data Source</code> string uniquely identifies a data source in Power BI and allows using different credentials for each data source. 
+        E.g. it is possible to connect with different credentials to databases residing on the same MariaDB server using dedicated credentials.",
         Documentation.Examples = {[
             Description = "Returns a table of MariaDB tables, views, and stored functions from the MariaDB database <code>databasename</code> on server <code>servername</code>.",
             Code = "MariaDB.Contents(""servername"", ""databasename"")",
@@ -40,6 +44,11 @@ MariaDBDatabaseType = type function (
         ],[
             Description = "Returns a table of databases on the specified MariaDB server <code>servername</code> using the provided port number <code>portnumber</code> to connect.",
             Code = "MariaDB.Contents(""servername:portnumber"")",
+            Result = "#table({""Column1""}, {{""Goodbye""}})"
+        ],[
+            Description = "Returns a table of MariaDB tables, views, and stored functions from the MariaDB database <code>databasename</code> on server <code>servername</code>. 
+            The result is similar to <code>MariaDB.Contents(""servername"", ""databasename"")</code>, but the string <code>servername;databasename</code> identifies a unique data source and allows using dedicated credentials for the database <code>databasename</code>.",
+            Code = "MariaDB.Contents(""servername;databasename"")",
             Result = "#table({""Column1""}, {{""Goodbye""}})"
         ]}
     ];
