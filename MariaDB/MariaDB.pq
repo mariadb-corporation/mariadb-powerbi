@@ -40,7 +40,10 @@ MariaDBDatabaseType = type function (
         ],[
             Description = Text.Format("Returns a table of databases on the specified MariaDB server using the default port #{0} to connect. Equivalent to <code>MariaDB.Contents(""servername:#{0}"")</code>.", {DefaultPort}),
             Code = "MariaDB.Contents(""servername"")",
-            Result = "#table({""Column1""}, {{""Goodbye""}})"
+            Result = "#table({""Name"", ""Description"", ""Data"", ""Kind""}, {
+       {""mysql"", null, #table(...), ""Database""},
+       {""flights"", null, #table(...), ""Database""}
+       })"
         ],[
             Description = "Returns a table of databases on the specified MariaDB server <code>servername</code> using the provided port number <code>portnumber</code> to connect.",
             Code = "MariaDB.Contents(""servername:portnumber"")",
