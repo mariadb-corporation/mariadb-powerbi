@@ -7,7 +7,7 @@ DefaultPort = 3306;
 INFORMATION_SCHEMA_TABLE_NAME = "TABLE_NAME";
 
 [DataSource.Kind="MariaDB", Publish="MariaDB.Publish"]
-shared MariaDB.Database = Value.ReplaceType(MariaDBDatabaseImplOdbc, MariaDBDatabaseType);
+shared MariaDB.Contents = Value.ReplaceType(MariaDBDatabaseImplOdbc, MariaDBDatabaseType);
 
 // The server parameter has a full name to overcome the limitation of the Data Source Settings dialog in Power BI Desktop:
 /*
@@ -17,17 +17,27 @@ in the future (i.e. allowing data connectors to display their own custom data so
 Source: https://github.com/Microsoft/DataConnectors/blob/master/docs/m-extensions.md#data-source-path-format
 */
 MariaDBDatabaseType = type function (
-    #"Maria DB Server" as (type text meta [
+    #"Maria DB Data Source" as (type text meta [
         Documentation.FieldCaption = Extension.LoadString("GetData_Server_FieldCaption"),
-        Documentation.FieldDescription = Extension.LoadString("GetData_Server_FieldDescription"),
-        Documentation.SampleValues = {"servername", "servername:portnumber"}
+        Documentation.FieldDescription = Extension.LoadString("GetData_Server_FieldDescription"),        
+        Documentation.SampleValues = {"servername:portnumber;databasename"}
     ]),
     optional database as (type text meta [
         Documentation.FieldCaption = Extension.LoadString("GetData_Database_FieldCaption"),
         Documentation.FieldDescription = Extension.LoadString("GetData_Database_FieldDescription")
     ]))
     as table meta [
-        Documentation.Name = Extension.LoadString("GetData_Title")
+        Documentation.Name = Extension.LoadString("GetData_Title"),
+        Documentation.LongDescription = "Returns a table.",
+        Documentation.Examples = {[
+            Description = "Returns a table with 'Hello world' repeated 2 times",
+            Code = "HelloWorldWithDocs.Contents(""servername"", ""databasename"")",
+            Result = "#table({""Column1""}, {{""Hello world""}, {""Hello world""}})"
+        ],[
+            Description = "Another example, new message, new count!",
+            Code = "HelloWorldWithDocs.Contents(""Goodbye"", 1)",
+            Result = "#table({""Column1""}, {{""Goodbye""}})"
+        ]}
     ];
 
 MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
@@ -86,7 +96,7 @@ MariaDB = [
             json = Json.Document(dataSourcePath),
             server = json[server]
         in
-            { "MariaDB.Database", server},
+            { "MariaDB.Contents", server},
     Authentication = [
         UsernamePassword = []
     ]//,

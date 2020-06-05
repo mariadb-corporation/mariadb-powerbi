@@ -130,13 +130,13 @@
     <value>Database</value>
   </data>
   <data name="GetData_Database_FieldDescription" xml:space="preserve">
-    <value>When empty allows browsing databases in Navigator.</value>
+    <value>Empty database name allows browsing databases in Navigator.</value>
   </data>
   <data name="GetData_Server_FieldCaption" xml:space="preserve">
-    <value>Maria DB Server</value>
+    <value>Maria DB Data Source</value>
   </data>
   <data name="GetData_Server_FieldDescription" xml:space="preserve">
-    <value>You can also enter a port number. Example: servername:portnumber</value>
+    <value>You can also enter a port number after a colon and a database name after a semicolon Example: servername:portnumber;databasename</value>
   </data>
   <data name="GetData_Title" xml:space="preserve">
     <value>MariaDB database</value>
