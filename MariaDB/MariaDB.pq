@@ -28,14 +28,18 @@ MariaDBDatabaseType = type function (
     ]))
     as table meta [
         Documentation.Name = Extension.LoadString("GetData_Title"),
-        Documentation.LongDescription = "Returns a table.",
+        Documentation.LongDescription = "Returns a table of MariaDB tables, views, and stored functions from the MariaDB database or a table of databases on the specified MariaDB server.",
         Documentation.Examples = {[
-            Description = "Returns a table with 'Hello world' repeated 2 times",
-            Code = "HelloWorldWithDocs.Contents(""servername"", ""databasename"")",
+            Description = "Returns a table of MariaDB tables, views, and stored functions from the MariaDB database <code>databasename</code> on server <code>servername</code>.",
+            Code = "MariaDB.Contents(""servername"", ""databasename"")",
             Result = "#table({""Column1""}, {{""Hello world""}, {""Hello world""}})"
         ],[
-            Description = "Another example, new message, new count!",
-            Code = "HelloWorldWithDocs.Contents(""Goodbye"", 1)",
+            Description = Text.Format("Returns a table of databases on the specified MariaDB server using the default port #{0} to connect. Equivalent to <code>MariaDB.Contents(""servername:#{0}"")</code>.", {DefaultPort}),
+            Code = "MariaDB.Contents(""servername"")",
+            Result = "#table({""Column1""}, {{""Goodbye""}})"
+        ],[
+            Description = "Returns a table of databases on the specified MariaDB server <code>servername</code> using the provided port number <code>portnumber</code> to connect.",
+            Code = "MariaDB.Contents(""servername:portnumber"")",
             Result = "#table({""Column1""}, {{""Goodbye""}})"
         ]}
     ];
