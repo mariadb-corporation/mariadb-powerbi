@@ -17,7 +17,7 @@ in the future (i.e. allowing data connectors to display their own custom data so
 Source: https://github.com/Microsoft/DataConnectors/blob/master/docs/m-extensions.md#data-source-path-format
 */
 MariaDBDatabaseType = type function (
-    #"Maria DB Data Source" as (type text meta [
+    #"MariaDB Data Source" as (type text meta [
         Documentation.FieldCaption = Extension.LoadString("GetData_Server_FieldCaption"),
         Documentation.FieldDescription = Extension.LoadString("GetData_Server_FieldDescription"),        
         Documentation.SampleValues = {"servername:portnumber;databasename"}
@@ -37,10 +37,10 @@ MariaDBDatabaseType = type function (
         
         <p><code>databasename</code> can be provided in either of the input parameters:</p>
         <ul>
-        <li>In the <b>Maria DB Data Source</b> string after a semicolon. This approach allows using database-specific credentials. See details below.
+        <li>In the <b>MariaDB Data Source</b> string after a semicolon. This approach allows using database-specific credentials. See details below.
         <li>As the optional <b>Database</b> parameter. This approach allows using same credentials for all databases on the specified server <code>servername</code>.
         </ul>
-        <p>The <b>Maria DB Data Source</b> string uniquely identifies a data source in Power BI and allows using different credentials for each data source.
+        <p>The <b>MariaDB Data Source</b> string uniquely identifies a data source in Power BI and allows using different credentials for each data source.
         Credentials for a data source are configured in Power BI <i>Data source settings</i> screen. 
         MariaDB Power BI connector supports Basic authentication per server or per database.
         E.g. it is possible to connect with different credentials to databases residing on the same MariaDB server.</p>",
@@ -132,7 +132,7 @@ MariaDB = [
     TestConnection = (dataSourcePath) =>
         let
             json = Json.Document(dataSourcePath),
-            server = json[server]
+            server = json[#"MariaDB Data Source"]
         in
             { "MariaDB.Contents", server},
     Authentication = [
