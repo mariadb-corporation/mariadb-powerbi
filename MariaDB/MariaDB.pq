@@ -24,19 +24,34 @@ MariaDBDatabaseType = type function (
     ]),
     optional database as (type text meta [
         Documentation.FieldCaption = Extension.LoadString("GetData_Database_FieldCaption"),
-        Documentation.FieldDescription = Extension.LoadString("GetData_Database_FieldDescription")
+        Documentation.FieldDescription = Extension.LoadString("GetData_Database_FieldDescription"),
+        Documentation.SampleValues = {"databasename"}
     ]))
     as table meta [
         Documentation.Name = Extension.LoadString("GetData_Title"),
-        Documentation.LongDescription = "Returns a table of databases on the specified MariaDB server, 
-        or a table of tables, views, and stored functions from the MariaDB database 
-        specified either after a semicolon in the <code>Maria DB Data Source</code> string or as the <code>database</code> parameter. 
-        The <code>Maria DB Data Source</code> string uniquely identifies a data source in Power BI and allows using different credentials for each data source. 
-        E.g. it is possible to connect with different credentials to databases residing on the same MariaDB server using dedicated credentials.",
+        Documentation.LongDescription = "<p>Returns a navigation table.</p>
+        <ul>
+        <li>Without a <code>databasename</code>, returns a table of databases on the specified MariaDB server <code>servername</code>.
+        <li>With a <code>databasename</code>, returns or a table of tables, views, and stored functions from the specified MariaDB database <code>databasename</code> on the server <code>servername</code>.
+        </ul>
+        
+        <p><code>databasename</code> can be provided in either of the input parameters:</p>
+        <ul>
+        <li>In the <b>Maria DB Data Source</b> string after a semicolon. This approach allows using database-specific credentials. See details below.
+        <li>As the optional <b>Database</b> parameter. This approach allows using same credentials for all databases on the specified server <code>servername</code>.
+        </ul>
+        <p>The <b>Maria DB Data Source</b> string uniquely identifies a data source in Power BI and allows using different credentials for each data source.
+        Credentials for a data source are configured in Power BI <i>Data source settings</i> screen. 
+        MariaDB Power BI connector supports Basic authentication per server or per database.
+        E.g. it is possible to connect with different credentials to databases residing on the same MariaDB server.</p>",
         Documentation.Examples = {[
             Description = "Returns a table of MariaDB tables, views, and stored functions from the MariaDB database <code>databasename</code> on server <code>servername</code>.",
             Code = "MariaDB.Contents(""servername"", ""databasename"")",
-            Result = "#table({""Column1""}, {{""Hello world""}, {""Hello world""}})"
+            Result = "#table({""Name"", ""Description"", ""Data"", ""Kind""}, {
+       {""airlines"", null, #table(...), ""Table""},
+       {""airports"", null, #table(...), ""Table""},
+       {""flights"", null, #table(...), ""Table""}
+       })"
         ],[
             Description = Text.Format("Returns a table of databases on the specified MariaDB server using the default port #{0} to connect. Equivalent to <code>MariaDB.Contents(""servername:#{0}"")</code>.", {DefaultPort}),
             Code = "MariaDB.Contents(""servername"")",
@@ -47,12 +62,19 @@ MariaDBDatabaseType = type function (
         ],[
             Description = "Returns a table of databases on the specified MariaDB server <code>servername</code> using the provided port number <code>portnumber</code> to connect.",
             Code = "MariaDB.Contents(""servername:portnumber"")",
-            Result = "#table({""Column1""}, {{""Goodbye""}})"
+            Result = "#table({""Name"", ""Description"", ""Data"", ""Kind""}, {
+       {""mysql"", null, #table(...), ""Database""},
+       {""flights"", null, #table(...), ""Database""}
+       })"
         ],[
             Description = "Returns a table of MariaDB tables, views, and stored functions from the MariaDB database <code>databasename</code> on server <code>servername</code>. 
             The result is similar to <code>MariaDB.Contents(""servername"", ""databasename"")</code>, but the string <code>servername;databasename</code> identifies a unique data source and allows using dedicated credentials for the database <code>databasename</code>.",
             Code = "MariaDB.Contents(""servername;databasename"")",
-            Result = "#table({""Column1""}, {{""Goodbye""}})"
+            Result = "#table({""Name"", ""Description"", ""Data"", ""Kind""}, {
+       {""airlines"", null, #table(...), ""Table""},
+       {""airports"", null, #table(...), ""Table""},
+       {""flights"", null, #table(...), ""Table""}
+       })"
         ]}
     ];
 
