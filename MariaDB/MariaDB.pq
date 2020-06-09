@@ -93,36 +93,72 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             else
                 error "Username and Password credentials required.", 
         CredentialConnectionString = Record.Combine({
-            [Driver = ODBCDriver, Server = ServerHost, Port = ServerPort],
+            [Driver = ODBCDriver,
+            Server = ServerHost, 
+            Port = ServerPort,
+            ApplicationIntent = "readonly"],
             if database <> null then [Database = database] else [],
             CredentialRecord
         }),
+
+        //
+        // Configuration options for the call to Odbc.DataSource
+        //
+        defaultConfig = BuildOdbcConfig(),
+
+        SqlCapabilities = defaultConfig[SqlCapabilities] & [
+            // place custom overrides here
+            SupportsTop = false,
+            // SQL_GB_NO_RELATION: See MariaDB ODBC Connector 3.1.7 ma_connection.c:1336
+            GroupByCapabilities = ODBC[SQL_GB][SQL_GB_NO_RELATION] /* SQL_GB_NO_RELATION (3) */,
+            FractionalSecondsScale = 3
+        ],
+
+        // Please refer to the ODBC specification for SQLGetInfo properties and values.
+        // https://github.com/Microsoft/ODBC-Specification/blob/master/Windows/inc/sqlext.h
+        SQLGetInfo = defaultConfig[SQLGetInfo] & [
+            // place custom overrides here
+            // SQL_SQL92_PREDICATES: See MariaDB ODBC Connector 3.1.7 ma_connection.c:1610
+            SQL_SQL92_PREDICATES = 
+                Number.BitwiseOr(ODBC[SQL_SP][SQL_SP_BETWEEN],
+                Number.BitwiseOr(ODBC[SQL_SP][SQL_SP_COMPARISON],
+                Number.BitwiseOr(ODBC[SQL_SP][SQL_SP_EXISTS],
+                Number.BitwiseOr(ODBC[SQL_SP][SQL_SP_IN],
+                Number.BitwiseOr(ODBC[SQL_SP][SQL_SP_ISNOTNULL],
+                Number.BitwiseOr(ODBC[SQL_SP][SQL_SP_ISNULL],
+                Number.BitwiseOr(ODBC[SQL_SP][SQL_SP_LIKE], 
+                ODBC[SQL_SP][SQL_SP_QUANTIFIED_COMPARISON]))))))),
+            // SQL_AGGREGATE_FUNCTIONS: See MariaDB ODBC Connector 3.1.7 ma_connection.c:976
+            SQL_AGGREGATE_FUNCTIONS = 
+                Number.BitwiseOr(ODBC[SQL_AF][SQL_AF_ALL],
+                Number.BitwiseOr(ODBC[SQL_AF][SQL_AF_AVG],
+                Number.BitwiseOr(ODBC[SQL_AF][SQL_AF_COUNT],
+                Number.BitwiseOr(ODBC[SQL_AF][SQL_AF_DISTINCT],
+                Number.BitwiseOr(ODBC[SQL_AF][SQL_AF_MAX],
+                Number.BitwiseOr(ODBC[SQL_AF][SQL_AF_MIN],
+                ODBC[SQL_AF][SQL_AF_SUM]))))))
+        ],
+
         OdbcDataSource = Odbc.DataSource(CredentialConnectionString, [
-            // Enables client side connection pooling for the ODBC driver.
-            // Most drivers will want to set this value to true.
-            ClientConnectionPooling = true,
-            // When HierarchialNavigation is set to true, the navigation tree
-            // will be organized by Database -> Schema -> Table. When set to false,
-            // all tables will be displayed in a flat list using fully qualified names. 
-            HierarchicalNavigation = true,
-            // Use the SqlCapabilities record to specify driver capabilities that are not
-            // discoverable through ODBC 3.8, and to override capabilities reported by
-            // the driver. 
-            SqlCapabilities = [
-                SupportsTop = false,
-                LimitClauseKind = LimitClauseKind.Limit,
-                Sql92Conformance = 8 /* SQL_SC_SQL92_FULL */,
-                GroupByCapabilities = 4 /* SQL_GB_NO_RELATION */,
-                FractionalSecondsScale = 3
-            ],
-            SoftNumbers = true,
+            // A logical (true/false) that sets whether to view the tables grouped by their schema names
+            HierarchicalNavigation = true, 
+            // Prevents execution of native SQL statements. Extensions should set this to true.
             HideNativeQuery = true,
-            // Use the SQLGetInfo record to override values returned by the driver.
-            SQLGetInfo = [
-                SQL_SQL92_PREDICATES = 0x0000FFFF,
-                SQL_AGGREGATE_FUNCTIONS = 0xFF
-            ]
-            ]),
+            // Allows upconversion of numeric types
+            SoftNumbers = true,
+            // Allow upconversion / resizing of numeric and string types
+            TolerateConcatOverflow = true,
+            // Enables connection pooling via the system ODBC manager
+            ClientConnectionPooling = true,
+
+            // These values should be set by previous steps
+            //CredentialConnectionString = CredentialConnectionString,
+            //AstVisitor = AstVisitor,
+            SqlCapabilities = SqlCapabilities,
+            //SQLColumns = SQLColumns,
+            //SQLGetTypeInfo = SQLGetTypeInfo,
+            SQLGetInfo = SQLGetInfo
+        ]),
         Filtered = if database <> null then OdbcDataSource{[Name = database]}[Data] else OdbcDataSource
     in
         Filtered;
@@ -179,3 +215,192 @@ GetAddress = (MariaDBServer as text) as record =>
 
 // ODBC helpers
 ODBCDriver = "MariaDB ODBC 3.1 Driver";
+
+// OdbcConstants contains numeric constants from the ODBC header files, and a 
+// helper function to create bitfield values.
+ODBC = Extension.LoadFunction("OdbcConstants.pqm");
+
+/****************************
+ * ODBC Driver Configuration
+ ****************************/
+
+// If the driver under-reports its SQL conformance level because it does not
+// support the full range of CRUD operations, but does support the ANSI SQL required
+// to support the SELECT operations performed by Power Query, you can override 
+// this value to report a higher conformance level. Please use one of the numeric 
+// values below (i.e. 8 for SQL_SC_SQL92_FULL).
+// 
+// SQL_SC = 
+// [
+//     SQL_SC_SQL92_ENTRY            = 1,
+//     SQL_SC_FIPS127_2_TRANSITIONAL = 2,
+//     SQL_SC_SQL92_INTERMEDIATE     = 4,
+//     SQL_SC_SQL92_FULL             = 8
+// ]
+//
+// SQL_SC_SQL92_INTERMEDIATE value derived from MariaDB ODBC Connector 3.1.7 sources ma_connection.c:1584
+// 
+Config_SqlConformance = ODBC[SQL_SC][SQL_SC_SQL92_INTERMEDIATE];  // null, 1, 2, 4, 8
+
+// This setting controls row count limits and offsets. If not set correctly, query
+// folding capabilities for this connector will be extremely limited. You can use
+// the LimitClauseKind constants to match common LIMIT/OFFSET SQL formats. If none
+// of the common formats match your desired SQL syntax, set LimitClauseKind to
+// LimitClauseKind.None and use the AstVisitor code below (commented out) to
+// generate a custom format.
+//
+// LimitClauseKind values and formats: 
+//
+// LimitClauseKind.Top (LIMIT only, OFFSET not supported)
+// -------------------
+// SELECT TOP 100 *
+// FROM table
+//
+// LimitClauseKind.Limit (LIMIT only, OFFSET not supported)
+// ---------------------
+// SELECT * 
+// FROM table
+// LIMIT 100
+//
+// LimitClauseKind.LimitOffset
+// ---------------------------
+// SELECT *
+// FROM table
+// LIMIT 100 OFFSET 200
+//
+// LimitClauseKind.AnsiSql2008
+// ---------------------------
+// SELECT *
+// FROM table
+// OFFSET 200 ROWS
+// FETCH FIRST 100 ROWS ONLY
+//
+Config_LimitClauseKind = LimitClauseKind.Limit; // MariaDB supports LIMIT only
+
+// Set this option to true if your ODBC supports the standard username/password 
+// handling through the UID and PWD connection string parameters. If the user 
+// selects UsernamePassword auth, the supplied values will be automatically
+// added to the CredentialConnectionString. 
+//
+// If you wish to set these values yourself, or your driver requires additional
+// parameters to be set, please set this option to 'false'
+//
+Config_DefaultUsernamePasswordHandling = false;  // true, false
+
+// Some drivers have problems with parameter bindings and certain data types. 
+// If the driver supports parameter bindings, then set this to true. 
+// When set to false, parameter values will be inlined as literals into the generated SQL.
+// To enable inlining for a limited number of data types, set this value
+// to null and set individual flags through the SqlCapabilities record.
+// 
+// Set to null to determine the value from the driver. 
+//
+// See MariaDB ODBC Connector 3.1.7 ma_connection.c:91
+Config_UseParameterBindings = true;  // true, false, null
+ 
+// Override this setting to force the character escape value. 
+// This is typically done when you have set UseParameterBindings to false.
+//
+// Set to null to determine the value from the driver. 
+//
+Config_StringLiterateEscapeCharacters  = null; // ex. { "\" }
+
+// Override this if the driver expects the use of CAST instead of CONVERT.
+// By default, the query will be generated using ANSI SQL CONVERT syntax.
+//
+// Set to null to leave default behavior.
+//
+Config_UseCastInsteadOfConvert = null; // true, false, null
+// build settings based on configuration variables
+
+BuildOdbcConfig = () as record =>
+    let
+        Merge = (previous as record, optional caps as record, optional funcs as record, optional getInfo as record) as record => 
+            let
+                newCaps = if (caps <> null) then previous[SqlCapabilities] & caps else previous[SqlCapabilities],
+                newFuncs = if (funcs <> null) then previous[SQLGetFunctions] & funcs else previous[SQLGetFunctions],
+                newGetInfo = if (getInfo <> null) then previous[SQLGetInfo] & getInfo else previous[SQLGetInfo]
+            in
+                [ SqlCapabilities = newCaps, SQLGetFunctions = newFuncs, SQLGetInfo = newGetInfo ],
+
+        defaultConfig = [
+            SqlCapabilities = [],
+            SQLGetFunctions = [],
+            SQLGetInfo = []
+        ],
+
+        withParams =
+            if (Config_UseParameterBindings = false) then
+                let 
+                    caps = [
+                        SupportsNumericLiterals = true,
+                        SupportsStringLiterals = true,
+                        SupportsOdbcDateLiterals = true,
+                        SupportsOdbcTimeLiterals = true,
+                        SupportsOdbcTimestampLiterals = true
+                    ],
+                    funcs = [
+                        SQL_API_SQLBINDPARAMETER = false
+                    ]
+                in
+                    Merge(defaultConfig, caps, funcs)
+            else
+                defaultConfig,
+                
+        withEscape = 
+            if (Config_StringLiterateEscapeCharacters <> null) then 
+                let
+                    caps = [
+                        StringLiteralEscapeCharacters = Config_StringLiterateEscapeCharacters
+                    ]
+                in
+                    Merge(withParams, caps)
+            else
+                withParams,
+
+        withLimitClauseKind = 
+            let
+                caps = [ 
+                    LimitClauseKind = Config_LimitClauseKind
+                ]
+            in
+                Merge(withEscape, caps),
+
+        withCastOrConvert = 
+            if (Config_UseCastInsteadOfConvert <> null) then
+                let
+                    value =
+                        if (Config_UseCastInsteadOfConvert = true) then 
+                            ODBC[SQL_FN_CVT][SQL_FN_CVT_CAST]
+                        else
+                            ODBC[SQL_FN_CVT][SQL_FN_CVT_CONVERT],
+                    getInfo = [ 
+                        SQL_CONVERT_FUNCTIONS = value
+                    ]
+                in
+                    Merge(withLimitClauseKind, null, null, getInfo)
+            else
+                withLimitClauseKind,
+
+        withSqlConformance =
+            if (Config_SqlConformance <> null) then
+                let
+                    getInfo = [
+                        SQL_SQL_CONFORMANCE = Config_SqlConformance
+                    ]
+                in
+                    Merge(withCastOrConvert, null, null, getInfo)
+            else
+                withCastOrConvert
+    in
+        withSqlConformance;
+
+// 
+// Load common library functions
+// 
+Extension.LoadFunction = (name as text) =>
+    let
+        binary = Extension.Contents(name),
+        asText = Text.FromBinary(binary)
+    in
+        Expression.Evaluate(asText, #shared);
