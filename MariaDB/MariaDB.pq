@@ -310,7 +310,14 @@ Config_StringLiterateEscapeCharacters  = null; // ex. { "\" }
 //
 // Set to null to leave default behavior.
 //
-Config_UseCastInsteadOfConvert = null; // true, false, null
+// MariaDB ODBC Connector 3.1.7 ma_connection.c:1132 returns 0 for SQL_CONVERT_FUNCTIONS, which means neither function is supported.
+// MariaDB supports both CONVERT (ANSI SQL92 and ODBC variants) and CAST.
+// Here it forces to use CAST to avoid the runtime exception with CONVERT:
+// check the manual that corresponds to your MariaDB server version for the right syntax to use near 'SQL_DOUBLE) } = ? and `day` is not null
+// Source SQL: select * from flights where { fn convert(`day`, SQL_DOUBLE) } = ? and `day` is not null
+// Related MariaDB ODBC Connector issue: https://jira.mariadb.org/browse/ODBC-186
+// Result SQL statement with CAST works fine, e.g.: select * from flights where cast(`day` as DOUBLE) = ? and `day` is not null
+Config_UseCastInsteadOfConvert = true; // true, false, null
 // build settings based on configuration variables
 
 BuildOdbcConfig = () as record =>
