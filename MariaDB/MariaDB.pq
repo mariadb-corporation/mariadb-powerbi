@@ -139,6 +139,10 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                 ODBC[SQL_AF][SQL_AF_SUM]))))))
         ],
 
+        AstVisitor = [
+            LimitClause = MariaDBLimitClause
+        ],
+
         OdbcDataSource = Odbc.DataSource(CredentialConnectionString, [
             // A logical (true/false) that sets whether to view the tables grouped by their schema names
             HierarchicalNavigation = true, 
@@ -153,7 +157,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
 
             // These values should be set by previous steps
             //CredentialConnectionString = CredentialConnectionString,
-            //AstVisitor = AstVisitor,
+            AstVisitor = AstVisitor,
             SqlCapabilities = SqlCapabilities,
             //SQLColumns = SQLColumns,
             //SQLGetTypeInfo = SQLGetTypeInfo,
@@ -276,6 +280,18 @@ Config_SqlConformance = ODBC[SQL_SC][SQL_SC_SQL92_INTERMEDIATE];  // null, 1, 2,
 // FETCH FIRST 100 ROWS ONLY
 //
 Config_LimitClauseKind = LimitClauseKind.Limit; // MariaDB supports LIMIT only
+
+// References:
+// Power Query ODBC: https://docs.microsoft.com/en-us/power-query/odbc#limitclause
+// MariaDB: https://mariadb.com/kb/en/limit/
+MariaDBLimitClause = (skip as nullable number, take as number) as record =>
+    let
+        limit = Text.Format("LIMIT #{0}#{1}", if (skip <> null) then Text.Combine({skip, ", "}) else "", {take})
+    in
+        [
+            Text = limit,
+            Location = "AfterQuerySpecification"
+        ];
 
 // Set this option to true if your ODBC supports the standard username/password 
 // handling through the UID and PWD connection string parameters. If the user 
