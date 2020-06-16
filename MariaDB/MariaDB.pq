@@ -1,6 +1,12 @@
 ﻿// This file contains your Data Connector logic
 section MariaDB;
 
+// When set to true, additional trace information will be written out to the User log. 
+// This should be set to false before release. Tracing is done through a call to 
+// Diagnostics.LogValue(). When EnableTraceOutput is set to false, the call becomes a 
+// no-op and simply returns the original value.
+EnableTraceOutput = true;
+
 DefaultPort = 3306;
 
 // MariaDB Information Schema
@@ -104,19 +110,19 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
         //
         // Configuration options for the call to Odbc.DataSource
         //
-        defaultConfig = BuildOdbcConfig(),
+        defaultConfig = Diagnostics.LogValue("BuildOdbcConfig", BuildOdbcConfig()),
 
-        SqlCapabilities = defaultConfig[SqlCapabilities] & [
+        SqlCapabilities = Diagnostics.LogValue("SqlCapabilities_Options", defaultConfig[SqlCapabilities] & [
             // place custom overrides here
             SupportsTop = false,
             // SQL_GB_NO_RELATION: See MariaDB ODBC Connector 3.1.7 ma_connection.c:1336
             GroupByCapabilities = ODBC[SQL_GB][SQL_GB_NO_RELATION] /* SQL_GB_NO_RELATION (3) */,
             FractionalSecondsScale = 3
-        ],
+        ]),
 
         // Please refer to the ODBC specification for SQLGetInfo properties and values.
         // https://github.com/Microsoft/ODBC-Specification/blob/master/Windows/inc/sqlext.h
-        SQLGetInfo = defaultConfig[SQLGetInfo] & [
+        SQLGetInfo = Diagnostics.LogValue("SQLGetInfo_Options", defaultConfig[SQLGetInfo] & [
             // place custom overrides here
             // SQL_SQL92_PREDICATES: See MariaDB ODBC Connector 3.1.7 ma_connection.c:1610
             SQL_SQL92_PREDICATES = 
@@ -137,7 +143,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                 Number.BitwiseOr(ODBC[SQL_AF][SQL_AF_MAX],
                 Number.BitwiseOr(ODBC[SQL_AF][SQL_AF_MIN],
                 ODBC[SQL_AF][SQL_AF_SUM]))))))
-        ],
+        ]),
 
         AstVisitor = [
             LimitClause = MariaDBLimitClause
@@ -428,3 +434,7 @@ Extension.LoadFunction = (name as text) =>
         asText = Text.FromBinary(binary)
     in
         Expression.Evaluate(asText, #shared);
+
+// Diagnostics module contains multiple functions. We can take the ones we need.
+Diagnostics = Extension.LoadFunction("Diagnostics.pqm");
+Diagnostics.LogValue = if (EnableTraceOutput) then Diagnostics[LogValue] else (prefix, value) => value;

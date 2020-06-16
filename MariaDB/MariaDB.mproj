@@ -67,6 +67,9 @@
     <Compile Include="resources.resx">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Diagnostics.pqm">
+      <SubType>Content</SubType>
+    </Compile>
     <Content Include="MariaDB.query.pq">
       <SubType>Code</SubType>
     </Content>
