@@ -286,7 +286,8 @@ Config_LimitClauseKind = LimitClauseKind.Limit; // MariaDB supports LIMIT only
 // MariaDB: https://mariadb.com/kb/en/limit/
 MariaDBLimitClause = (skip as nullable number, take as number) as record =>
     let
-        limit = Text.Format("LIMIT #{0}#{1}", if (skip <> null) then Text.Combine({skip, ", "}) else "", {take})
+        skipText = if (skip <> null) then Text.Combine({skip, ", "}) else "",
+        limit = Text.Format("LIMIT #{0}#{1}", {skipText, take})
     in
         [
             Text = limit,
