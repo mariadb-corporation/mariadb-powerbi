@@ -285,7 +285,8 @@ Config_SqlConformance = ODBC[SQL_SC][SQL_SC_SQL92_INTERMEDIATE];  // null, 1, 2,
 // OFFSET 200 ROWS
 // FETCH FIRST 100 ROWS ONLY
 //
-Config_LimitClauseKind = LimitClauseKind.Limit; // MariaDB supports LIMIT only
+// Custom MariaDBLimitClause used with AstVisitor
+Config_LimitClauseKind = LimitClauseKind.None;
 
 // References:
 // Power Query ODBC: https://docs.microsoft.com/en-us/power-query/odbc#limitclause
