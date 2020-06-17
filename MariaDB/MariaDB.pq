@@ -191,10 +191,6 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             else
                 source,
 
-        AstVisitor = [
-            LimitClause = MariaDBLimitClause
-        ],
-
         OdbcDataSource = Odbc.DataSource(CredentialConnectionString, [
             // A logical (true/false) that sets whether to view the tables grouped by their schema names
             HierarchicalNavigation = true, 
@@ -209,7 +205,6 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
 
             // These values should be set by previous steps
             //CredentialConnectionString = CredentialConnectionString,
-            AstVisitor = AstVisitor,
             SqlCapabilities = SqlCapabilities,
             SQLColumns = SQLColumns,
             SQLGetTypeInfo = SQLGetTypeInfo,
@@ -331,21 +326,8 @@ Config_SqlConformance = ODBC[SQL_SC][SQL_SC_SQL92_INTERMEDIATE];  // null, 1, 2,
 // OFFSET 200 ROWS
 // FETCH FIRST 100 ROWS ONLY
 //
-// Custom MariaDBLimitClause used with AstVisitor
-Config_LimitClauseKind = LimitClauseKind.None;
-
-// References:
-// Power Query ODBC: https://docs.microsoft.com/en-us/power-query/odbc#limitclause
 // MariaDB: https://mariadb.com/kb/en/limit/
-MariaDBLimitClause = (skip as nullable number, take as number) as record =>
-    let
-        skipText = if (skip <> null) then Text.Combine({skip, ", "}) else "",
-        limit = Text.Format("LIMIT #{0}#{1}", {skipText, take})
-    in
-        [
-            Text = limit,
-            Location = "AfterQuerySpecification"
-        ];
+Config_LimitClauseKind = LimitClauseKind.LimitOffset;
 
 // Set this option to true if your ODBC supports the standard username/password 
 // handling through the UID and PWD connection string parameters. If the user 
