@@ -6,6 +6,11 @@ section MariaDB;
 // Diagnostics.LogValue(). When EnableTraceOutput is set to false, the call becomes a 
 // no-op and simply returns the original value.
 EnableTraceOutput = true;
+// When false enables the 'View Native Query' context menu item on a query step in Power BI Desktop Query Editor.
+// By default viewing native queries is enabled when tracing is enabled.
+// MS samples say: 'Extensions should set this to true.'
+// https://github.com/microsoft/DataConnectors/blob/master/samples/ODBC/SqlODBC/SqlODBC.pq
+Config_HideNativeQuery = not EnableTraceOutput;
 
 DefaultPort = 3306;
 
@@ -195,7 +200,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             // A logical (true/false) that sets whether to view the tables grouped by their schema names
             HierarchicalNavigation = true, 
             // Prevents execution of native SQL statements. Extensions should set this to true.
-            HideNativeQuery = true,
+            HideNativeQuery = Config_HideNativeQuery,
             // Allows upconversion of numeric types
             SoftNumbers = true,
             // Allow upconversion / resizing of numeric and string types
