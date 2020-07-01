@@ -126,6 +126,12 @@
   <data name="DataSourceLabel" xml:space="preserve">
     <value>MariaDB</value>
   </data>
+  <data name="Error_BadServer" xml:space="preserve">
+    <value>Invalid server name</value>
+  </data>
+  <data name="Error_CredentialsRequired" xml:space="preserve">
+    <value>Username and Password credentials required.</value>
+  </data>
   <data name="GetData_Database_FieldCaption" xml:space="preserve">
     <value>Database</value>
   </data>

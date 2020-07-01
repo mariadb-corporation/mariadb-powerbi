@@ -1,4 +1,5 @@
 ﻿// This file contains your Data Connector logic
+[Version = "1.0.0"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
 section MariaDB;
 
 // When set to true, additional trace information will be written out to the User log. 
@@ -13,9 +14,6 @@ EnableTraceOutput = true;
 Config_HideNativeQuery = not EnableTraceOutput;
 
 DefaultPort = 3306;
-
-// MariaDB Information Schema
-INFORMATION_SCHEMA_TABLE_NAME = "TABLE_NAME";
 
 [DataSource.Kind="MariaDB", Publish="MariaDB.Publish"]
 shared MariaDB.Contents = Value.ReplaceType(MariaDBDatabaseImplOdbc, MariaDBDatabaseType);
@@ -102,7 +100,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                 [ UID = Credential[Username], PWD = Credential[Password] ]
             // unknown authentication kind - return an error
             else
-                error "Username and Password credentials required.", 
+                error Extension.LoadString("Error_CredentialsRequired"), 
         CredentialConnectionString = Record.Combine({
             [Driver = ODBCDriver,
             Server = ServerHost, 
@@ -287,7 +285,7 @@ GetAddress = (MariaDBServer as text) as record =>
         Result = [Host=Host, Port=Port, Database=database]
     in
         if BadServer then 
-            error "Invalid server name"
+            error Extension.LoadString("Error_BadServer")
         else Result;
 
 // ODBC helpers
