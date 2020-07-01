@@ -115,6 +115,8 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
         //
         // Configuration options for the call to Odbc.DataSource
         //
+        implicitTypeConversions = Diagnostics.LogValue("ImplicitTypeConversions", ImplicitTypeConversions),
+
         defaultConfig = Diagnostics.LogValue("BuildOdbcConfig", BuildOdbcConfig()),
 
         SqlCapabilities = Diagnostics.LogValue("SqlCapabilities_Options", defaultConfig[SqlCapabilities] & [
@@ -183,18 +185,35 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
         // The sample implementation provided here will simply output the original table
         // to the user trace log, without any modification. 
         SQLColumns = (catalogName, schemaName, tableName, columnName, source) =>
-            if (EnableTraceOutput <> true) then source else
-            // the if statement conditions will force the values to evaluated/written to diagnostics
-            if (Diagnostics.LogValue("SQLColumns.TableName", tableName) <> "***" and Diagnostics.LogValue("SQLColumns.ColumnName", columnName) <> "***") then
-                let
-                    // Outputting the entire table might be too large, and result in the value being truncated.
-                    // We can output a row at a time instead with Table.TransformRows()
-                    rows = Table.TransformRows(source, each Diagnostics.LogValue("SQLColumns", _)),
-                    toTable = Table.FromRecords(rows)
-                in
-                    Value.ReplaceType(toTable, Value.Type(source))
-            else
-                source,
+            let
+                OdbcSqlType.WCHAR = -8,
+                OdbcSqlType.WVARCHAR = -9,
+
+                FixDataType = (dataType) =>
+                    if dataType = OdbcSqlType.WCHAR then
+                        OdbcSqlType.WVARCHAR
+                    else
+                        dataType,
+                FixTypeName = (typeName) => 
+                    if typeName = "ENUM" then
+                        "VARCHAR"
+                    else
+                        typeName,
+                TransformDataType = Table.TransformColumns(source, { { "DATA_TYPE", FixDataType } }),
+                Transform = Table.TransformColumns(TransformDataType, { { "TYPE_NAME", FixTypeName } })
+            in
+                if (EnableTraceOutput <> true) then Transform else
+                // the if statement conditions will force the values to evaluated/written to diagnostics
+                if (Diagnostics.LogValue("SQLColumns.TableName", tableName) <> "***" and Diagnostics.LogValue("SQLColumns.ColumnName", columnName) <> "***") then
+                    let
+                        // Outputting the entire table might be too large, and result in the value being truncated.
+                        // We can output a row at a time instead with Table.TransformRows()
+                        rows = Table.TransformRows(Transform, each Diagnostics.LogValue("SQLColumns", _)),
+                        toTable = Table.FromRecords(rows)
+                    in
+                        Value.ReplaceType(toTable, Value.Type(Transform))
+                else
+                    Transform,
 
         OdbcDataSource = Odbc.DataSource(CredentialConnectionString, [
             // A logical (true/false) that sets whether to view the tables grouped by their schema names
@@ -207,6 +226,8 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             TolerateConcatOverflow = true,
             // Enables connection pooling via the system ODBC manager
             ClientConnectionPooling = true,
+            
+            ImplicitTypeConversions = implicitTypeConversions,
 
             // These values should be set by previous steps
             //CredentialConnectionString = CredentialConnectionString,
@@ -458,6 +479,14 @@ BuildOdbcConfig = () as record =>
                 withCastOrConvert
     in
         withSqlConformance;
+
+// This is a work around for the lack of available conversion functions in the driver.
+ImplicitTypeConversions = #table(
+    { "Type1",        "Type2",         "ResultType" }, {
+    // 'enum' char is added here to allow it to be converted to 'varchar' when compared against constants.
+    // See MariaDB ODBC Connector 3.1.7 ma_info.c:51
+    { "enum",       "varchar",          "varchar" }
+});
 
 // 
 // Load common library functions
