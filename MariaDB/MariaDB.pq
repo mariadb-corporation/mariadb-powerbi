@@ -101,6 +101,21 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             // unknown authentication kind - return an error
             else
                 error Extension.LoadString("Error_CredentialsRequired"), 
+        
+        // This logic is for data sources that optional SSL/encrypted connections.
+        // When SupportsEncryption is set to true on the data source kind record,
+        // Power Query will try to connect using SSL. If that fails, the connector
+        // should return Extension.CredentialError(Credential.EncryptionNotSupported)
+        // to indicate that encryption isn't enabled for this source. If the user then
+        // chooses to establish an unencrypted connection, Credential[EncryptConnection]
+        // will be set to false on the subsequent connection attempt.
+        EncryptConnection = Credential[EncryptConnection]?,
+        SSLRecord =
+            if EncryptConnection = true then
+                [FORCETLS = 1]
+            else
+                [],
+
         CredentialConnectionString = Record.Combine({
             [Driver = ODBCDriver,
             Server = ServerHost, 
@@ -226,9 +241,10 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             ClientConnectionPooling = true,
             
             ImplicitTypeConversions = implicitTypeConversions,
+            OnError = OnError,
 
             // These values should be set by previous steps
-            //CredentialConnectionString = CredentialConnectionString,
+            CredentialConnectionString = SSLRecord,
             SqlCapabilities = SqlCapabilities,
             SQLColumns = SQLColumns,
             SQLGetTypeInfo = SQLGetTypeInfo,
@@ -240,6 +256,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
 
 // Data Source Kind description
 MariaDB = [
+    SupportsEncryption = true,
     TestConnection = (dataSourcePath) =>
         let
             json = Json.Document(dataSourcePath),
@@ -287,6 +304,25 @@ GetAddress = (MariaDBServer as text) as record =>
         if BadServer then 
             error Extension.LoadString("Error_BadServer")
         else Result;
+
+OnError = (errorRecord as record) =>
+    let
+        OdbcError = errorRecord[Detail][OdbcErrors]{0},
+        OdbcErrorMessage = OdbcError[Message],
+        OdbcErrorCode = OdbcError[NativeError],
+        HasCredentialError = errorRecord[Detail] <> null
+            and errorRecord[Detail][OdbcErrors]? <> null
+            //and Text.Contains(OdbcErrorMessage, "[ThriftExtension]")
+            and OdbcErrorCode <> 0 and OdbcErrorCode <> 7,
+        IsSSLError = OdbcErrorCode = 6
+    in
+        if HasCredentialError then
+            if IsSSLError then 
+                error Extension.CredentialError(Credential.EncryptionNotSupported)
+            else 
+                error Extension.CredentialError(Credential.AccessDenied, OdbcErrorMessage)
+        else 
+            error errorRecord;
 
 // ODBC helpers
 ODBCDriver = "MariaDB ODBC 3.1 Driver";
