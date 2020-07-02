@@ -114,7 +114,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             if EncryptConnection = true then
                 [FORCETLS = 1]
             else
-                [],
+                [FORCETLS = 0],
 
         CredentialConnectionString = Record.Combine({
             [Driver = ODBCDriver,
