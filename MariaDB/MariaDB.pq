@@ -115,14 +115,14 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                 [FORCETLS = 1]
             else
                 [FORCETLS = 0],
+        CredentialConnectionString = Record.Combine({CredentialRecord, SSLRecord}),
 
-        CredentialConnectionString = Record.Combine({
+        ConnectionString = Record.Combine({
             [Driver = ODBCDriver,
             Server = ServerHost, 
             Port = ServerPort,
             ApplicationIntent = "readonly"],
-            if database <> null then [Database = database] else [],
-            CredentialRecord
+            if database <> null then [Database = database] else []
         }),
 
         //
@@ -228,7 +228,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                 else
                     Transform,
 
-        OdbcDataSource = Odbc.DataSource(CredentialConnectionString, [
+        OdbcDataSource = Odbc.DataSource(ConnectionString, [
             // A logical (true/false) that sets whether to view the tables grouped by their schema names
             HierarchicalNavigation = true, 
             // Prevents execution of native SQL statements. Extensions should set this to true.
@@ -244,7 +244,7 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             OnError = OnError,
 
             // These values should be set by previous steps
-            CredentialConnectionString = SSLRecord,
+            CredentialConnectionString = CredentialConnectionString,
             SqlCapabilities = SqlCapabilities,
             SQLColumns = SQLColumns,
             SQLGetTypeInfo = SQLGetTypeInfo,
@@ -397,6 +397,8 @@ Config_LimitClauseKind = LimitClauseKind.LimitOffset;
 // If you wish to set these values yourself, or your driver requires additional
 // parameters to be set, please set this option to 'false'
 //
+// MariaDB: set to 'false', because if encryption is enabled for the connection 
+// then CredentialConnectionString shall contain the additional parameter FORCETLS.
 Config_DefaultUsernamePasswordHandling = false;  // true, false
 
 // Some drivers have problems with parameter bindings and certain data types. 
