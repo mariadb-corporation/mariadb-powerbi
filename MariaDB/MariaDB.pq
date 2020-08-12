@@ -6,7 +6,7 @@ section MariaDB;
 // This should be set to false before release. Tracing is done through a call to 
 // Diagnostics.LogValue(). When EnableTraceOutput is set to false, the call becomes a 
 // no-op and simply returns the original value.
-EnableTraceOutput = true;
+EnableTraceOutput = false;
 // When false enables the 'View Native Query' context menu item on a query step in Power BI Desktop Query Editor.
 // By default viewing native queries is enabled when tracing is enabled.
 // MS samples say: 'Extensions should set this to true.'
