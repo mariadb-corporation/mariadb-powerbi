@@ -2,7 +2,7 @@
 
 ## About
 
-**MariaDB** has created a custom **Power BI DirectQuery Connector** which has undergone the Microsoft certification process and will be available in the October 2020 release of Microsoft Power BI. In the interim, it is available for download from our website.
+**MariaDB** has created a custom **Power BI DirectQuery Connector** which has undergone the **Microsoft** certification process and will be available in the October 2020 release of Microsoft Power BI. In the interim, it is available for download from our website.
 
 ## Requirements
 
