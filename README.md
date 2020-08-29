@@ -6,14 +6,14 @@
 
 ## Requirements
 
--   Microsoft Power BI Desktop
-    [Download](https://www.microsoft.com/en-us/download/details.aspx?id=58494)
+*   Microsoft Power BI Desktop
+    *   [Download](https://www.microsoft.com/en-us/download/details.aspx?id=58494)
 
--   MariaDB ODBC Driver v3.1.7 or later
-    [Download](https://mariadb.com/kb/en/mariadb-connector-odbc/)
+*   MariaDB ODBC Driver v3.1.7 or later
+    *   [Download](https://mariadb.com/kb/en/mariadb-connector-odbc/)
 
--   MariaDB Power BI Connector
-    [Download](https://mariadb.com/downloads/#connectors-connectors_dataanalysis)
+*   MariaDB Power BI Connector
+    *   [Download](https://mariadb.com/downloads/#connectors-connectors_dataanalysis)
 
 ## Connector extensibility in Power BI
 
