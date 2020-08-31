@@ -201,10 +201,14 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             let
                 OdbcSqlType.WCHAR = -8,
                 OdbcSqlType.WVARCHAR = -9,
+                OdbcSqlType.REAL = 7,
+                OdbcSqlType.DECIMAL = 3,
 
                 FixDataType = (dataType) =>
                     if dataType = OdbcSqlType.WCHAR then
                         OdbcSqlType.WVARCHAR
+                    else if dataType = OdbcSqlType.REAL then
+                        OdbcSqlType.DECIMAL
                     else
                         dataType,
                 FixTypeName = (typeName) => 
@@ -215,6 +219,8 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                     // Sample MariaDB data to test with: flights.carrier (CHAR), employees.gender (ENUM).
                     else if typeName = "CHAR" then
                         "VARCHAR"
+                    else if typeName = "FLOAT" then
+                        "DECIMAL"
                     else
                         typeName,
                 TransformDataType = Table.TransformColumns(source, { { "DATA_TYPE", FixDataType } }),
