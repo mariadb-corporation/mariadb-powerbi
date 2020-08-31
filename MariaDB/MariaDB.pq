@@ -210,6 +210,11 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                 FixTypeName = (typeName) => 
                     if typeName = "ENUM" then
                         "VARCHAR"
+                    // All CHAR columns are reported to be VARCHAR as a consequence of the ENUM data type fix,
+                    // which is reported by the driver as dataType = -8 (WCHAR) that Power BI has issues dealing with.
+                    // Sample MariaDB data to test with: flights.carrier (CHAR), employees.gender (ENUM).
+                    else if typeName = "CHAR" then
+                        "VARCHAR"
                     else
                         typeName,
                 TransformDataType = Table.TransformColumns(source, { { "DATA_TYPE", FixDataType } }),
