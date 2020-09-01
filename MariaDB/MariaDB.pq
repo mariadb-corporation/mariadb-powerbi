@@ -278,7 +278,7 @@ MariaDB = [
 
 // Data Source UI publishing description
 MariaDB.Publish = [
-    Beta = true,
+    Beta = false,
     SupportsDirectQuery = true,     // enables direct query
     Category = "Database",
     ButtonText = { Extension.LoadString("ButtonTitle"), Extension.LoadString("ButtonHelp") },
