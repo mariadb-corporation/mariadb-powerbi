@@ -199,21 +199,26 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
         // to the user trace log, without any modification. 
         SQLColumns = (catalogName, schemaName, tableName, columnName, source) =>
             let
-                OdbcSqlType.WCHAR = -8,
                 OdbcSqlType.WVARCHAR = -9,
+                OdbcSqlType.REAL = 7,
+                OdbcSqlType.DOUBLE = 8,
 
-                FixDataType = (dataType) =>
-                    if dataType = OdbcSqlType.WCHAR then
-                        OdbcSqlType.WVARCHAR
+                FixColumns = (row) as record =>
+                    if row[TYPE_NAME] = "ENUM" then
+                        Record.TransformFields(row, {
+                            { "DATA_TYPE", (val) => OdbcSqlType.WVARCHAR },
+                            { "TYPE_NAME", (val) => "VARCHAR" }
+                            })
+                    else if row[DATA_TYPE] = OdbcSqlType.REAL then
+                        Record.TransformFields(row, {
+                            { "DATA_TYPE", (val) => OdbcSqlType.DOUBLE },
+                            { "TYPE_NAME", (val) => "DOUBLE" }
+                            })
                     else
-                        dataType,
-                FixTypeName = (typeName) => 
-                    if typeName = "ENUM" then
-                        "VARCHAR"
-                    else
-                        typeName,
-                TransformDataType = Table.TransformColumns(source, { { "DATA_TYPE", FixDataType } }),
-                Transform = Table.TransformColumns(TransformDataType, { { "TYPE_NAME", FixTypeName } })
+                        row,
+                TransformedRows = Table.TransformRows(source, each FixColumns(_)), // column data types info is lost here
+                EmptyTableWithColumnTypes = Table.FirstN(source, 0), // get an empty table with the original column data types
+                Transform = Table.InsertRows(EmptyTableWithColumnTypes, 0, TransformedRows)
             in
                 if (EnableTraceOutput <> true) then Transform else
                 // the if statement conditions will force the values to evaluated/written to diagnostics
@@ -273,7 +278,7 @@ MariaDB = [
 
 // Data Source UI publishing description
 MariaDB.Publish = [
-    Beta = true,
+    Beta = false,
     SupportsDirectQuery = true,     // enables direct query
     Category = "Database",
     ButtonText = { Extension.LoadString("ButtonTitle"), Extension.LoadString("ButtonHelp") },
@@ -349,9 +354,13 @@ ODBC = Extension.LoadFunction("OdbcConstants.pqm");
 //     SQL_SC_SQL92_FULL             = 8
 // ]
 //
-// SQL_SC_SQL92_INTERMEDIATE value derived from MariaDB ODBC Connector 3.1.7 sources ma_connection.c:1584
-// 
-Config_SqlConformance = ODBC[SQL_SC][SQL_SC_SQL92_INTERMEDIATE];  // null, 1, 2, 4, 8
+// SQL_SC_SQL92_INTERMEDIATE value was originially derived from MariaDB ODBC Connector 3.1.7 sources ma_connection.c:1584
+// However, during Connecto Certification testing it was found that SQL_SC_SQL92_FULL conformance was required by the Mashup Engine to support joins (JOIN).
+// The SQL92_FULL requirement comes from Microsoft.Mashup.Engine1.Library.Odbc.OdbcQuery.PushDownQuerySpecification(bool liftOrderBy) 
+// where a FoldingFailureException is thrown if DataSource.Info.SupportsDerivedTable == false.
+// Respectively, the property definition in the Mashup Engine was: public virtual bool SupportsDerivedTable => Supports(Odbc32.SQL_SC.SQL_SC_SQL92_FULL);
+// Thus, here SQL92 conformance is reported higher (FULL) than the ODBC driver actually supports or at least reports (INTERMEDIATE).
+Config_SqlConformance = ODBC[SQL_SC][SQL_SC_SQL92_FULL];  // null, 1, 2, 4, 8
 
 // This setting controls row count limits and offsets. If not set correctly, query
 // folding capabilities for this connector will be extremely limited. You can use
