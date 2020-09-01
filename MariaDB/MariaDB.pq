@@ -204,27 +204,22 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                 OdbcSqlType.REAL = 7,
                 OdbcSqlType.DECIMAL = 3,
 
-                FixDataType = (dataType) =>
-                    if dataType = OdbcSqlType.WCHAR then
-                        OdbcSqlType.WVARCHAR
-                    else if dataType = OdbcSqlType.REAL then
-                        OdbcSqlType.DECIMAL
+                FixColumns = (row) as record =>
+                    if row[TYPE_NAME] = "ENUM" then
+                        Record.TransformFields(row, {
+                            { "DATA_TYPE", (val) => OdbcSqlType.WVARCHAR },
+                            { "TYPE_NAME", (val) => "VARCHAR" }
+                            })
+                    else if row[DATA_TYPE] = OdbcSqlType.REAL then
+                        Record.TransformFields(row, {
+                            { "DATA_TYPE", (val) => OdbcSqlType.DECIMAL },
+                            { "TYPE_NAME", (val) => "DECIMAL" }
+                            })
                     else
-                        dataType,
-                FixTypeName = (typeName) => 
-                    if typeName = "ENUM" then
-                        "VARCHAR"
-                    // All CHAR columns are reported to be VARCHAR as a consequence of the ENUM data type fix,
-                    // which is reported by the driver as dataType = -8 (WCHAR) that Power BI has issues dealing with.
-                    // Sample MariaDB data to test with: flights.carrier (CHAR), employees.gender (ENUM).
-                    else if typeName = "CHAR" then
-                        "VARCHAR"
-                    else if typeName = "FLOAT" then
-                        "DECIMAL"
-                    else
-                        typeName,
-                TransformDataType = Table.TransformColumns(source, { { "DATA_TYPE", FixDataType } }),
-                Transform = Table.TransformColumns(TransformDataType, { { "TYPE_NAME", FixTypeName } })
+                        row,
+                TransformedRows = Table.TransformRows(source, each FixColumns(_)), // column data types info is lost here
+                EmptyTableWithColumnTypes = Table.FirstN(source, 0), // get an empty table with the original column data types
+                Transform = Table.InsertRows(EmptyTableWithColumnTypes, 0, TransformedRows)
             in
                 if (EnableTraceOutput <> true) then Transform else
                 // the if statement conditions will force the values to evaluated/written to diagnostics
