@@ -199,10 +199,9 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
         // to the user trace log, without any modification. 
         SQLColumns = (catalogName, schemaName, tableName, columnName, source) =>
             let
-                OdbcSqlType.WCHAR = -8,
                 OdbcSqlType.WVARCHAR = -9,
                 OdbcSqlType.REAL = 7,
-                OdbcSqlType.DECIMAL = 3,
+                OdbcSqlType.DOUBLE = 8,
 
                 FixColumns = (row) as record =>
                     if row[TYPE_NAME] = "ENUM" then
@@ -212,8 +211,8 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                             })
                     else if row[DATA_TYPE] = OdbcSqlType.REAL then
                         Record.TransformFields(row, {
-                            { "DATA_TYPE", (val) => OdbcSqlType.DECIMAL },
-                            { "TYPE_NAME", (val) => "DECIMAL" }
+                            { "DATA_TYPE", (val) => OdbcSqlType.DOUBLE },
+                            { "TYPE_NAME", (val) => "DOUBLE" }
                             })
                     else
                         row,
