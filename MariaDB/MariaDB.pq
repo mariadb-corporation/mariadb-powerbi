@@ -1,5 +1,5 @@
 ﻿// This file contains your Data Connector logic
-[Version = "1.0.0"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
+[Version = "1.0.1"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
 section MariaDB;
 
 // When set to true, additional trace information will be written out to the User log. 
@@ -178,14 +178,21 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
         // The sample implementation provided here will simply output the original table
         // to the user trace log, without any modification. 
         SQLGetTypeInfo = (types) => 
-            if (EnableTraceOutput <> true) then types else
+            // Do not report BIGINT as a supported data type to Power BI to avoid the driver error:
+            // ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near 'bigint)' at line 1
+            // Root cause: Power BI Mashup Engine translates M data type Int64 to SQL data type BIGINT, however CAST and CONVERT function implementations in MariaDB support a limited set of data types and BIGINT is not on this list.
+            // Related MariaDB issue: https://jira.mariadb.org/browse/MDEV-17686
+            // Connector issue: https://github.com/mariadb-corporation/mariadb-powerbi/issues/4
+            let typesFiltered = Table.SelectRows(types, each not Text.Contains(_[TYPE_NAME], "BIGINT"))
+            in
+            if (EnableTraceOutput <> true) then typesFiltered else
             let
                 // Outputting the entire table might be too large, and result in the value being truncated.
                 // We can output a row at a time instead with Table.TransformRows()
-                rows = Table.TransformRows(types, each Diagnostics.LogValue("SQLGetTypeInfo " & _[TYPE_NAME], _)),
+                rows = Table.TransformRows(typesFiltered, each Diagnostics.LogValue("SQLGetTypeInfo " & _[TYPE_NAME], _)),
                 toTable = Table.FromRecords(rows)
             in
-                Value.ReplaceType(toTable, Value.Type(types)),                
+                Value.ReplaceType(toTable, Value.Type(typesFiltered)),                
 
         // SQLColumns is a function handler that receives the results of an ODBC call
         // to SQLColumns(). The source parameter contains a table with the data type 
