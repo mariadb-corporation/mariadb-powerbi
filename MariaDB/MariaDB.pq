@@ -183,7 +183,22 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             // Root cause: Power BI Mashup Engine translates M data type Int64 to SQL data type BIGINT, however CAST and CONVERT function implementations in MariaDB support a limited set of data types and BIGINT is not on this list.
             // Related MariaDB issue: https://jira.mariadb.org/browse/MDEV-17686
             // Connector issue: https://github.com/mariadb-corporation/mariadb-powerbi/issues/4
-            let typesFiltered = Table.SelectRows(types, each not Text.Contains(_[TYPE_NAME], "BIGINT"))
+            let typesFiltered = Table.SelectRows(types, each not Text.Contains(_[TYPE_NAME], "BIGINT")),
+                // Fix VARCHAR data type definition: the driver incorrectly reports COLUMN_SIZE = 255 which results in forced use of CAST to transform any VARCHAR column with size more than 255 to LONG VARCHAR.
+                // There's a known MariaDB issue with using VARCHAR in CAST: (N) is required in CAST(expr AS VARCHAR(N)). https://jira.mariadb.org/browse/MDEV-11283
+                // Power BI Mashup Engine does not use (N) when generating CAST expression which leads to a runtime exception as reported in MariaDB Connector GitHub issue #11.
+                // The COLUMN_SIZE fix for VARCHAR data type eliminates use of the CAST function by the Mashup Engine to upsize VARCHAR to LONG VARCHAR.
+                // Connector issue: https://github.com/mariadb-corporation/mariadb-powerbi/issues/11
+                FixColumns = (row) as record =>
+                    if row[TYPE_NAME] = "VARCHAR" then
+                        Record.TransformFields(row, {
+                            { "COLUMN_SIZE", (val) => 65532 }
+                            })
+                    else
+                        row,
+                TransformedRows = Table.TransformRows(typesFiltered, each FixColumns(_)), // metadata loss happens here
+                EmptyTableWithColumnTypes = Table.FirstN(typesFiltered, 0), // get an empty table with the original column data types
+                typesFixed = Table.InsertRows(EmptyTableWithColumnTypes, 0, TransformedRows) // insert the transformed data into the empty table with correct metadata
             in
             if (EnableTraceOutput <> true) then typesFiltered else
             let
