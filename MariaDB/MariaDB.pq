@@ -200,14 +200,14 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
                 EmptyTableWithColumnTypes = Table.FirstN(typesFiltered, 0), // get an empty table with the original column data types
                 typesFixed = Table.InsertRows(EmptyTableWithColumnTypes, 0, TransformedRows) // insert the transformed data into the empty table with correct metadata
             in
-            if (EnableTraceOutput <> true) then typesFiltered else
+            if (EnableTraceOutput <> true) then typesFixed else
             let
                 // Outputting the entire table might be too large, and result in the value being truncated.
                 // We can output a row at a time instead with Table.TransformRows()
-                rows = Table.TransformRows(typesFiltered, each Diagnostics.LogValue("SQLGetTypeInfo " & _[TYPE_NAME], _)),
+                rows = Table.TransformRows(typesFixed, each Diagnostics.LogValue("SQLGetTypeInfo " & _[TYPE_NAME], _)),
                 toTable = Table.FromRecords(rows)
             in
-                Value.ReplaceType(toTable, Value.Type(typesFiltered)),                
+                Value.ReplaceType(toTable, Value.Type(typesFixed)),                
 
         // SQLColumns is a function handler that receives the results of an ODBC call
         // to SQLColumns(). The source parameter contains a table with the data type 
