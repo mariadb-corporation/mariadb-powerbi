@@ -1,5 +1,5 @@
 ﻿// This file contains your Data Connector logic
-[Version = "1.0.5"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
+[Version = "1.0.6"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
 section MariaDB;
 
 // When set to true, additional trace information will be written out to the User log. 
@@ -35,6 +35,11 @@ MariaDBDatabaseType = type function (
         Documentation.FieldCaption = Extension.LoadString("GetData_Database_FieldCaption"),
         Documentation.FieldDescription = Extension.LoadString("GetData_Database_FieldDescription"),
         Documentation.SampleValues = {"databasename"}
+    ]),
+    optional CreateNavigationProperties as (type logical meta [
+        Documentation.FieldCaption = Extension.LoadString("GetData_CreateNavigationProperties_FieldCaption"),
+        Documentation.FieldDescription = Extension.LoadString("GetData_CreateNavigationProperties_FieldDescription"),
+        Documentation.AllowedValues = { true, false }
     ]))
     as table meta [
         Documentation.Name = Extension.LoadString("GetData_Title"),
@@ -52,7 +57,12 @@ MariaDBDatabaseType = type function (
         <p>The <b>MariaDB Data Source</b> string uniquely identifies a data source in Power BI and allows using different credentials for each data source.
         Credentials for a data source are configured in Power BI <i>Data source settings</i> screen. 
         MariaDB Power BI connector supports Basic authentication per server or per database.
-        E.g. it is possible to connect with different credentials to databases residing on the same MariaDB server.</p>",
+        E.g. it is possible to connect with different credentials to databases residing on the same MariaDB server.</p>
+        
+        <p><code>CreateNavigationProperties</code> is a parameter for Odbc.DataSource.</p>
+        <p>A logical value that sets whether to generate navigation properties on the returned tables. Navigation properties are based on foreign key relationships reported by the driver. These properties show up as “virtual” columns that can be expanded in the query editor, creating the appropriate join.</p>
+        <p>If calculating foreign key dependencies is an expensive operation for your driver, you may want to set this value to false.</p>
+        <p>Default: TRUE</p>",
         Documentation.Examples = {[
             Description = "Returns a table of MariaDB tables and views functions from the MariaDB database <code>databasename</code> on server <code>servername</code>.",
             Code = "MariaDB.Contents(""servername"", ""databasename"")",
@@ -87,7 +97,7 @@ MariaDBDatabaseType = type function (
         ]}
     ];
 
-MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
+MariaDBDatabaseImplOdbc = (server as text, optional db as text, optional CreateNavigationProperties as logical) as table =>
     let
         Address = GetAddress(server),
         ServerHost = Address[Host],
@@ -266,6 +276,8 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text) as table =>
             TolerateConcatOverflow = true,
             // Enables connection pooling via the system ODBC manager
             ClientConnectionPooling = true,
+            // Addresses Connector issue: https://github.com/mariadb-corporation/mariadb-powerbi/issues/19
+            CreateNavigationProperties = if (CreateNavigationProperties = null) then true else CreateNavigationProperties,
             
             ImplicitTypeConversions = implicitTypeConversions,
             OnError = OnError,
