@@ -1,5 +1,5 @@
 ﻿// This file contains your Data Connector logic
-[Version = "1.0.6"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
+[Version = "1.0.7"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
 section MariaDB;
 
 // When set to true, additional trace information will be written out to the User log. 
