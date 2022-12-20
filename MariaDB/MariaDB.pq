@@ -1,5 +1,5 @@
 ﻿// This file contains your Data Connector logic
-[Version = "1.0.6"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
+[Version = "1.0.7"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
 section MariaDB;
 
 // When set to true, additional trace information will be written out to the User log. 
@@ -40,10 +40,18 @@ MariaDBDatabaseType = type function (
         Documentation.FieldCaption = Extension.LoadString("GetData_CreateNavigationProperties_FieldCaption"),
         Documentation.FieldDescription = Extension.LoadString("GetData_CreateNavigationProperties_FieldDescription"),
         Documentation.AllowedValues = { true, false }
-    ]))
+    ]),
+    optional query as (type text meta [
+        Formatting.IsMultiLine = true,
+        Formatting.IsCode = true,
+        Documentation.FieldCaption = Extension.LoadString("GetData_Query_FieldCaption"),
+        Documentation.FieldDescription = Extension.LoadString("GetData_Query_FieldDescription"),
+        Documentation.SampleValues = {"SELECT * FROM table"}
+    ])
+    )
     as table meta [
         Documentation.Name = Extension.LoadString("GetData_Title"),
-        Documentation.LongDescription = "<p>Returns a navigation table.</p>
+        Documentation.LongDescription = "<p>Returns either a navigation table (when <code>query=null</code>) or a result set (when <code>query</code> is a valid SQL query string).</p>
         <ul>
         <li>Without a <code>databasename</code>, returns a table of databases on the specified MariaDB server <code>servername</code>.
         <li>With a <code>databasename</code>, returns or a table of tables and views from the specified MariaDB database <code>databasename</code> on the server <code>servername</code>.
@@ -62,7 +70,11 @@ MariaDBDatabaseType = type function (
         <p><code>CreateNavigationProperties</code> is a parameter for Odbc.DataSource.</p>
         <p>A logical value that sets whether to generate navigation properties on the returned tables. Navigation properties are based on foreign key relationships reported by the driver. These properties show up as “virtual” columns that can be expanded in the query editor, creating the appropriate join.</p>
         <p>If calculating foreign key dependencies is an expensive operation for your driver, you may want to set this value to false.</p>
-        <p>Default: TRUE</p>",
+        <p>Default: TRUE</p>
+        
+        <p><code>query</code> is a parameter for Odbc.Query.</p>
+        <p>A string value that should contain a valid SQL query.</p>
+        <p>When provided, a value for the <code>databasename</code> parameter must be also provided.</p>",
         Documentation.Examples = {[
             Description = "Returns a table of MariaDB tables and views functions from the MariaDB database <code>databasename</code> on server <code>servername</code>.",
             Code = "MariaDB.Contents(""servername"", ""databasename"")",
@@ -97,7 +109,7 @@ MariaDBDatabaseType = type function (
         ]}
     ];
 
-MariaDBDatabaseImplOdbc = (server as text, optional db as text, optional CreateNavigationProperties as logical) as table =>
+MariaDBDatabaseImplOdbc = (server as text, optional db as text, optional CreateNavigationProperties as logical, optional query as text) as table =>
     let
         Address = GetAddress(server),
         ServerHost = Address[Host],
@@ -289,7 +301,14 @@ MariaDBDatabaseImplOdbc = (server as text, optional db as text, optional CreateN
             SQLGetTypeInfo = SQLGetTypeInfo,
             SQLGetInfo = SQLGetInfo
         ]),
-        Filtered = if database <> null then OdbcDataSource{[Name = database]}[Data] else OdbcDataSource
+        Filtered = if query <> null then Odbc.Query(ConnectionString,
+            query,
+            [
+                SqlCompatibleWindowsAuth = false,
+                CredentialConnectionString = CredentialConnectionString
+            ]
+        ) else 
+        if database <> null then OdbcDataSource{[Name = database]}[Data] else OdbcDataSource
     in
         Filtered;
 

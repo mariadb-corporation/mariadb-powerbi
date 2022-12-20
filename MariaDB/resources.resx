@@ -132,6 +132,9 @@
   <data name="Error_CredentialsRequired" xml:space="preserve">
     <value>Username and Password credentials required.</value>
   </data>
+  <data name="GetData_AdvancedOptions_FieldCaption" xml:space="preserve">
+    <value>Advanced Options</value>
+  </data>
   <data name="GetData_CreateNavigationProperties_FieldCaption" xml:space="preserve">
     <value>Auto-detect foreign key dependencies</value>
   </data>
@@ -147,6 +150,12 @@ Default: TRUE</value>
   </data>
   <data name="GetData_Database_FieldDescription" xml:space="preserve">
     <value>Empty database name allows browsing databases in Navigator.</value>
+  </data>
+  <data name="GetData_Query_FieldCaption" xml:space="preserve">
+    <value>SQL statement (requires database)</value>
+  </data>
+  <data name="GetData_Query_FieldDescription" xml:space="preserve">
+    <value>Works in Import mode only. Not supported in DirectQuery mode.</value>
   </data>
   <data name="GetData_Server_FieldCaption" xml:space="preserve">
     <value>MariaDB Data Source</value>
